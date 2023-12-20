@@ -1,3 +1,10 @@
+# secret files
+.secrets/
+
+# large datafiles
+*.csv
+data/datafiles/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
