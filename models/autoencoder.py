@@ -2,20 +2,22 @@ import torch.nn as nn
 import torch
 import pandas as pd
 import numpy as np
-from typing import Collection, Sequence, Literal, Dict
+from typing import Collection, Sequence, Literal, Dict, Tuple
+import utils
 
 
+DEFAULTS = utils.Defaults()
 
 class PriceAutoEncoder(nn.Module):
     def __init__(
             self, 
-            hist_years: int=10,
-            dim1: int=4,
-            dim2: int=,
-            nhead: int=4):
+            window_size: int=DEFAULTS.window_size_weeks,
+            encoding_dims: int=5,
+            num_transformer_layers: int=10,
+            dim: int=5,
+            nhead: int=5):
         super().__init__()
-        self.window_size = hist_years
-        self.price_window_size = hist_years * 52 # weekly price frequency
+        self.window_size = window_size
         self.dim = dim
         encoder_layer = nn.TransformerEncoderLayer(d_model=dim, nhead=nhead, batch_first=True)
         decoder_layer = nn.TransformerDecoderLayer(d_model=dim, nhead=nhead, batch_first=True)
