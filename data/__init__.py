@@ -5,49 +5,16 @@ import pandas as pd
 import numpy as np
 from utils.database import SQLDatabase
 import utils
-from typing import Tuple, Dict, Any, Generator
+from typing import (
+    Tuple, Dict, Any, 
+    Generator, Collection, 
+    Optional, Union
+    )
+import datetime as dt
+import itertools
 
 
-# class Defaults:
-#     """singleton class storing the default settings"""
-#     fundamental_data_cols = (
-#         # "figi",
-#         # "year",
-#         "operating_roic", 
-#         "normalized_roe", 
-#         "return_on_asset", 
-#         "return_com_eqy", 
-#         "ebit_margin", 
-#         "fcf_margin_after_oper_lea_pymt", 
-#         "gross_margin", 
-#         "eff_tax_rate", 
-#         "ebitda_margin", 
-#         "net_debt_to_shrhldr_eqty", 
-#         "fixed_charge_coverage_ratio", 
-#         "net_debt_to_ebitda", 
-#         "acct_rcv_days", 
-#         "cash_conversion_cycle", 
-#         "invent_days", 
-#         "net_income_growth", 
-#         "sales_rev_turn_growth",
-#     )
-#     price_multiples_data_cols = (
-#         "best_cur_ev_to_ebitda",
-#         "fcf_yield_with_cur_entp_val",
-#         "px_last",
-#         "px_to_book_ratio",
-#         "px_to_sales_ratio"
-#     )
-#     dtype = torch.float32
-#     padding_val = torch.tensor(-1e10, dtype=dtype)
-#     padding_dims = (1, 0, 0, 0) # default is to pad on the left
-
-#     def __new__(cls):
-#         if not hasattr(cls, 'instance'):
-#             cls.instance = super(Defaults, cls).__new__(cls)
-#             return cls.instance
-
-DEFAULTS = utils.Defaults()
+DEFAULTS = utils.Defaults
 
 class FundamentalDataset(Dataset):
     """annual dataset containing key financial data of ~10k companies globally"""
@@ -58,7 +25,7 @@ class FundamentalDataset(Dataset):
     # data = data.ffill(axis="columns") # forward fill missing data from the previous year
     figi_list = SQLDatabase.to_pandas(f"SELECT distinct figi FROM {table_name} ORDER BY figi ASC")
     year_list = SQLDatabase.to_pandas(f"SELECT distinct year FROM {table_name} ORDER BY year ASC")
-    stats = {'BottomValue': {'operating_roic': 0.2335, 
+    stats_dict = {'BottomValue': {'operating_roic': 0.2335, 
                 'normalized_roe': -40.5183, 
                 'return_on_asset': -2.4256, 
                 'return_com_eqy': -7.7047, 
@@ -95,7 +62,7 @@ class FundamentalDataset(Dataset):
                 'sales_rev_turn_growth': 1.3398632010585674
                 }
             }
-
+    stats = pd.DataFrame.from_dict(stats_dict, orient="columns")
 
     def get_winsorization_stats(self):
         stats_query = """WITH Sample AS (
@@ -314,7 +281,8 @@ class FundamentalDataset(Dataset):
             self, 
             window_size: int=DEFAULTS.window_size_years, 
             dtype: torch.dtype=DEFAULTS.dtype,
-            padding_val: torch.tensor=DEFAULTS.padding_val):
+            padding_val: torch.tensor=DEFAULTS.padding_val,
+            freq: DEFAULTS.FREQ="Y"):
         super().__init__()
         # self.figi_list = self.data.index.get_level_values("figi").unique()
         # self.year_list = self.data.index.get_level_values("year").unique()
@@ -323,28 +291,75 @@ class FundamentalDataset(Dataset):
         self.window_size = window_size
         self.dtype = dtype
         self.padding_val = padding_val
+        year_range = range(self.min_year + 2, self.max_year)
+        periods = pd.Index(
+            [dt.date(y, m, d) for y in year_range 
+             for m in range(1, 13) for d in range(1, 29)])\
+                .astype("datetime64[ns]")\
+                    .to_period(freq=freq)\
+                        .unique()\
+                            .sort_values()\
+                                .astype("datetime64[ns]")\
+                                    .values
+        self.index = list(
+            itertools.product(
+                tuple(range(len(self.figi_list))), 
+                tuple(periods)
+                )
+            )
+        
+    def get_index(self, idx: int) -> Tuple[int, Union[dt.date, np.datetime64]]:
+        return self.index[idx]
     
-    def __getitem__(self, idx: Tuple[int, int]) -> torch.tensor:
+    def __getitem__(
+            self,
+            idx: int
+            ) -> Tuple[torch.tensor]:
         """dunder method for indexing items. Note idx should a tuple.
-        :param idx: takes tuples of (idx_of_company, idx_of_year)
+        :param idx: takes tuples of (idx_of_company, period (dt.datetime))
+            Note: periods earlier than March 31st will only access data 2 years ago
         """
-        figi_idx, year_idx = idx
+        figi_idx, period = self.get_index(idx)
+        
+        if isinstance(period, dt.date):
+            pass
+        elif isinstance(period, np.datetime64):
+            period = pd.to_datetime(period).date()
+        else:
+            raise TypeError(f"the second item in idx must be either datetime or np.datetime64, got {type(period)}!")
+        
         figi = self.figi_list.loc[figi_idx, "figi"]
-        year = self.year_list.loc[year_idx, "year"]
+        if period.year < self.min_year + 2 or period.year > self.max_year:
+            raise ValueError(f"{period} outside of valid range! Must be between year {self.min_year + 2} and {self.max_year}")
+        if period <= dt.date(period.year, 3, 31): # hard-code annual report date to Mar 31st, until availability of more granular data
+            year = period.year - 2
+        else:
+            year = period.year - 1
 
         if year >= self.min_year + self.window_size:
             begin_year = year - self.window_size + 1
             query = f"SELECT {', '.join(DEFAULTS.fundamental_data_cols)} FROM {self.table_name} WHERE (year between {begin_year} AND {year}) AND (figi = '{figi}')"
             slice = SQLDatabase.to_pandas(query).astype(float).ffill()
+            slice = utils.Scaler.scale_minmax(slice, self.stats)
             slice = torch.tensor(slice.values, dtype=self.dtype)
+            padding_mask = torch.tensor(
+                [False for _ in range(self.window_size)],
+                dtype=torch.bool
+            )
         else:
             query = f"SELECT {', '.join(DEFAULTS.fundamental_data_cols)} FROM {self.table_name} WHERE (year <= {year}) AND (figi = '{figi}')"
             slice = SQLDatabase.to_pandas(query).astype(float).ffill()
+            slice = utils.Scaler.scale_minmax(slice, self.stats)
             slice = torch.tensor(slice.values, dtype=self.dtype)
             padding_size = self.min_year - (year - self.window_size + 1)
             slice = F.pad(slice, pad=(0, 0, padding_size, 0), mode="constant", value=self.padding_val)
+            padding_mask = torch.tensor(
+                [True for _ in range(padding_size)] \
+                + [False for _ in range(self.window_size - padding_size)],
+                dtype=torch.bool
+            )
 
-        return utils.fillna(slice, self.padding_val) # fill na with the padding as all these will be ignored during training
+        return utils.fillna(slice, self.padding_val), padding_mask # fill na with the padding as all these will be ignored during training
 
     def __len__(self) -> int:
         figi_len, year_len = self.get_len()
@@ -359,8 +374,8 @@ class FundamentalDataset(Dataset):
     def __iter__(self) -> Generator[torch.tensor, None, None]:
         figi_len, year_len = self.get_len()
         for i in range(figi_len):
-            for j in range(year_len):
-                yield self.__getitem__((i, j))
+            for j in self.year_list.year.values[2:]:
+                yield self.__getitem__((i, dt.date(j, 6, 30)))
 
 
 
@@ -379,21 +394,20 @@ class PriceDataset(Dataset):
     figi_list = SQLDatabase.to_pandas(f"SELECT distinct figi FROM {table_name} ORDER BY figi ASC")
     period_list = SQLDatabase.to_pandas(f"SELECT distinct period FROM {table_name} ORDER BY period ASC")
 
-    stats = {
-        "top_thres": {
+    stats_dict = {
+        "TopValue": {
             "best_cur_ev_to_ebitda": 1.915, 
-            "fcf_yield_with_cur_entyp_val": -34.78195,
+            "fcf_yield_with_cur_entp_val": -34.78195,
             "px_to_book_ratio": 0.1693,
             "px_to_sales_ratio": 0.0779},
-        "bottom_thres": {
+        "BottomValue": {
             "best_cur_ev_to_ebitda": 181.86475,	
-            "fcf_yield_with_cur_entyp_val": 16.01975,
+            "fcf_yield_with_cur_entp_val": 16.01975,
             "px_to_book_ratio": 26.5518,
             "px_to_sales_ratio": 30.341475
             }
         }
-
-    # def get_future_return()
+    stats = pd.DataFrame.from_dict(stats_dict, orient="columns")
 
     def get_winsorization_stats(self) -> pd.DataFrame:
         query = """WITH Sample AS (
@@ -448,7 +462,9 @@ class PriceDataset(Dataset):
             window_size: int=DEFAULTS.window_size_weeks, # ~5 years 
             dtype: torch.dtype=DEFAULTS.dtype,
             padding_val: torch.tensor=DEFAULTS.padding_val,
-            winsorize: bool=False
+            stationary_cols: Optional[Collection[Any]]=DEFAULTS.stationary_price_multiples_data_cols,
+            nonstationary_cols: Optional[Collection[Any]]=DEFAULTS.nonstationary_price_multiples_data_cols,
+            # winsorize: bool=False
             ):
         super().__init__()
         # self.figi_list = self.data.index.get_level_values("figi").unique()
@@ -458,29 +474,71 @@ class PriceDataset(Dataset):
         self.window_size = window_size
         self.dtype = dtype
         self.padding_val = padding_val
-
+        self.stationary_cols = stationary_cols
+        self.nonstationary_cols = nonstationary_cols
+        self.index = list(
+            itertools.product(
+                tuple(range(len(self.figi_list))), 
+                tuple(self.period_list.period)
+                )
+            )
+        
+    def get_index(self, idx: int) -> Tuple[int, Union[dt.date, np.datetime64]]:
+        return self.index[idx]
     
-    def __getitem__(self, idx: Tuple[int, int]) -> torch.tensor:
+
+    def process_timeseries(self, df: pd.DataFrame):
+        """difference non-static series and scale static series"""
+        differenced = utils.differencer(df, skip_columns=self.stationary_cols, orient=0)
+        scaled = utils.Scaler.scale_minmax(differenced, minmax_df=self.stats, skip_columns=self.nonstationary_cols)
+        return scaled
+
+    def __getitem__(
+            self, 
+            idx: int
+            ) -> Tuple[torch.tensor, torch.tensor]:
         """dunder method for indexing items. Note idx should a tuple.
         :param idx: takes tuples of (idx_of_company, idx_of_year)
         """
-        figi_idx, period_idx = idx
+        figi_idx, period = self.get_index(idx)
         figi = self.figi_list.loc[figi_idx, "figi"]
-        end_period = self.period_list.loc[period_idx, "period"].strftime("%Y-%m-%d")
-
+        if isinstance(period, np.datetime64):
+            pass
+        elif isinstance(period, dt.date):
+            period = np.datetime64(period)
+        else:
+            raise TypeError(f"the second item in idx must be either datetime or np.datetime64, got {type(period)}!")
+        
+        if period in self.period_list:
+            end_period = period.strftime("%Y-%m-%d")
+        else:
+            period_idx = self.period_list["period"].lt(period).sum() - 1 # get periods up to the closest period in `self.period_list`
+            end_period = self.period_list["period"].iloc[period_idx].strftime("%Y-%m-%d")
+        
         if period_idx >= self.window_size:
             begin_period = self.period_list.loc[period_idx - self.window_size, "period"].strftime("%Y-%m-%d")
             query = f"SELECT {', '.join(DEFAULTS.price_multiples_data_cols)} FROM {self.table_name} WHERE (period between '{begin_period}' AND '{end_period}') AND (figi = '{figi}')"
             slice = SQLDatabase.to_pandas(query).astype(float).ffill()
+            slice = self.process_timeseries(slice)\
+                .replace(float("inf"), np.nan)\
+                .replace(float("-inf"), np.nan)
             slice = torch.tensor(slice.values, dtype=self.dtype)
+            padding_mask = torch.tensor([False for _ in range(self.window_size)],
+                                dtype=torch.bool)
         else:
             query = f"SELECT {', '.join(DEFAULTS.price_multiples_data_cols)} FROM {self.table_name} WHERE (period <= '{end_period}') AND (figi = '{figi}')"
             slice = SQLDatabase.to_pandas(query).astype(float).ffill()
+            slice = self.process_timeseries(slice)\
+                .replace(float("inf"), np.nan)\
+                .replace(float("-inf"), np.nan) 
             slice = torch.tensor(slice.values, dtype=self.dtype)
             padding_size = (self.window_size - period_idx)
+            padding_mask = torch.tensor([True for _ in range(padding_size)] \
+                                + [False for _ in range(self.window_size - padding_size)],
+                                dtype=torch.bool)
             slice = F.pad(slice, pad=(0, 0, padding_size, 0), mode="constant", value=self.padding_val)
 
-        return utils.fillna(slice, self.padding_val)
+        return (utils.fillna(slice, self.padding_val), padding_mask)
 
     def __len__(self) -> int:
         figi_len, period_len = self.get_len()
@@ -494,8 +552,11 @@ class PriceDataset(Dataset):
     def __iter__(self) -> Generator[torch.tensor, None, None]:
         figi_len, year_len = self.get_len()
         for i in range(figi_len):
-            for j in range(year_len):
+            for j in self.period_list.period.values:
                 yield self.__getitem__((i, j))
 
 class MacroDataset(Dataset):
+    pass
+
+class EstimateDataset(Dataset):
     pass

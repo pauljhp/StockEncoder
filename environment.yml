@@ -1,0 +1,18 @@
+name: stockencoder_env
+channels:
+  - defaults
+dependencies:
+  - numpy
+  - scipy
+  - python=3.10
+  - matplotlib
+  - pytorch
+  - pandas
+  - tensorboardx
+  - pip:
+    - pydantic
+    - jupyter
+    - jupyterlab
+    - ipykernel
+    - ipywidgets
+prefix: C:\users\p.peng\anaconda3\envs\stockencoder_env
