@@ -302,8 +302,8 @@ class FundamentalDataset(Dataset):
         super().__init__()
         # self.figi_list = self.data.index.get_level_values("figi").unique()
         # self.year_list = self.data.index.get_level_values("year").unique()
-        self.min_year = self.year_list.year.min()
-        self.max_year = self.year_list.year.max()
+        self.min_year = self.year_list.min()
+        self.max_year = self.year_list.max()
         self.window_size = window_size
         self.dtype = dtype
         self.padding_val = padding_val
