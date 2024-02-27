@@ -15,6 +15,21 @@ import itertools
 
 
 DEFAULTS = utils.Defaults
+FIGI_LIST = SQLDatabase.to_pandas(
+    """SELECT DISTINCT figi FROM price_multiples_stock_encoder
+    INTERSECT
+    SELECT DISTINCT figi FROM fundamental_data_stock_encoder;
+    """
+    )
+PERIOD_LIST = SQLDatabase.to_pandas(
+    """SELECT DISTINCT period, DATEPART(year, period) as year
+    FROM price_multiples_stock_encoder
+    WHERE DATEPART(year, period) IN (
+        SELECT DISTINCT year FROM fundamental_data_stock_encoder
+    )
+    ORDER BY period ASC;
+    """
+    )
 
 class FundamentalDataset(Dataset):
     """annual dataset containing key financial data of ~10k companies globally"""
@@ -23,8 +38,9 @@ class FundamentalDataset(Dataset):
     # print(data.head())
     # data = data.set_index(["figi", "year"]).sort_index()
     # data = data.ffill(axis="columns") # forward fill missing data from the previous year
-    figi_list = SQLDatabase.to_pandas(f"SELECT distinct figi FROM {table_name} ORDER BY figi ASC")
-    year_list = SQLDatabase.to_pandas(f"SELECT distinct year FROM {table_name} ORDER BY year ASC")
+    figi_list = FIGI_LIST
+    period_list = PERIOD_LIST
+    year_list = period_list.year.unique()
     stats_dict = {'BottomValue': {'operating_roic': 0.2335, 
                 'normalized_roe': -40.5183, 
                 'return_on_asset': -2.4256, 
@@ -291,10 +307,8 @@ class FundamentalDataset(Dataset):
         self.window_size = window_size
         self.dtype = dtype
         self.padding_val = padding_val
-        year_range = range(self.min_year + 2, self.max_year)
-        periods = pd.Index(
-            [dt.date(y, m, d) for y in year_range 
-             for m in range(1, 13) for d in range(1, 29)])\
+        # year_range = range(self.min_year + 2, self.max_year)
+        periods = pd.Index(self.period_list.period)\
                 .astype("datetime64[ns]")\
                     .to_period(freq=freq)\
                         .unique()\
@@ -391,8 +405,8 @@ class PriceDataset(Dataset):
     # print(data.head())
     # data = data.set_index(["figi", "year"]).sort_index()
     # data = data.ffill(axis="columns") # forward fill missing data from the previous year
-    figi_list = SQLDatabase.to_pandas(f"SELECT distinct figi FROM {table_name} ORDER BY figi ASC")
-    period_list = SQLDatabase.to_pandas(f"SELECT distinct period FROM {table_name} ORDER BY period ASC")
+    figi_list = FIGI_LIST
+    period_list = PERIOD_LIST
 
     stats_dict = {
         "TopValue": {
