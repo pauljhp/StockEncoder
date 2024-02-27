@@ -24,9 +24,12 @@ FIGI_LIST = SQLDatabase.to_pandas(
 PERIOD_LIST = SQLDatabase.to_pandas(
     """SELECT DISTINCT period, DATEPART(year, period) as year
     FROM price_multiples_stock_encoder
-    WHERE DATEPART(year, period) IN (
-        SELECT DISTINCT year FROM fundamental_data_stock_encoder
-    )
+    WHERE DATEPART(year, period) > (
+            SELECT DISTINCT min(year) FROM fundamental_data_stock_encoder
+        ) + 1 AND
+        DATEPART(year, period) <= (
+            SELECT DISTINCT max(year) FROM fundamental_data_stock_encoder
+        )
     ORDER BY period ASC;
     """
     )
