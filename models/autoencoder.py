@@ -126,7 +126,7 @@ class BaseAutoEncoder(nn.Module, ABC):
             _output = self.linear_decoder_layers[i](_embeddings[i])
             output = self.transformer_decoders[i](_output, memory=memories[i])
             reconstructed_xs.append(output)
-        return output
+        return reconstructed_xs
 
     def forward(self, x, padding_mask: torch.tensor) -> torch.tensor:
         x_, z = self.encode(x, padding_mask=padding_mask)
