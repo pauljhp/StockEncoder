@@ -3,7 +3,7 @@ import torch
 import pandas as pd
 import numpy as np
 from typing import Collection, Sequence, Literal, Dict, Tuple, Callable, Optional
-from types import FrozenList
+# from types import FrozenList
 import utils
 from abc import ABC, abstractmethod
 
