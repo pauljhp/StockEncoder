@@ -16,7 +16,7 @@ class BaseAutoEncoder(nn.Module, ABC):
     timeseries data"""
     def __init__(
             self, 
-            window_size: int,
+            window_sizes: Sequence[int],
             encoding_dim: int,
             num_transformer_layers: Sequence[int],
             dims: Sequence[int],
@@ -27,15 +27,14 @@ class BaseAutoEncoder(nn.Module, ABC):
             layer_norm_eps: float=1e-4,
             dtype: torch.dtype=torch.float32):
         """
-        :param window_size: express in years. Pricing data window_size will be 
-            converted into weeks assuming 52 weeks in a year
+        :param window_sizes: number of periods in the inputs
         :param encoding_dim: number of dimensions in the encoded vector
             Different inputs will be encoded into the same-dimensional vector
             and concatenated
         :param num_transformer_layers: expressed a Sequence
         """
         super().__init__()
-        self.window_size = window_size
+        self.window_sizes = window_sizes
         self.dims = Tuple(dims)
         self.num_transformer_layers = Tuple(num_transformer_layers)
         self.nheads = Tuple(nheads)
@@ -53,7 +52,7 @@ class BaseAutoEncoder(nn.Module, ABC):
                 decoder_layer=decoder_layer, 
                 num_layers=num_layers)
             return transformer_decoder
-        def create_linear_encoder(dim: int):
+        def create_linear_encoder(dim: int, window_size: int):
             linear_encoder = nn.Sequential(
                 nn.Flatten(1, -1),
                 nn.BatchNorm1d(num_features=dim * window_size, device=device, dtype=dtype),
@@ -63,7 +62,7 @@ class BaseAutoEncoder(nn.Module, ABC):
                 nn.Linear(dim * window_size // 4 ** 3, encoding_dim, device=device, dtype=dtype)
             )
             return linear_encoder
-        def create_linear_decoder(dim: int):
+        def create_linear_decoder(dim: int, window_size: int):
             linear_decoder = nn.Sequential(
                 nn.Linear(encoding_dim, dim * window_size // 4 ** 3, device=device, dtype=dtype),
                 nn.Linear(dim * window_size // 4 ** 3, dim * window_size // 4 ** 2, device=device, dtype=dtype),
@@ -76,7 +75,10 @@ class BaseAutoEncoder(nn.Module, ABC):
         self.tanh = nn.Tanh()
         self.linear_encoder = nn.Linear(self.num_inputs, 1)
         self.linear_decoder = nn.Linear(1, self.num_inputs)
-        for i, (dim, nhead, num_transformer_layer) in enumerate(zip(dims, nheads, num_transformer_layers)):
+        for i, (dim, nhead, num_transformer_layer, window_size) in enumerate(
+            zip(
+                dims, nheads, num_transformer_layers, window_sizes)
+                ):
             encoder_layer = nn.TransformerEncoderLayer(
                 d_model=dim, nhead=nhead, batch_first=True, device=device, 
                 dtype=dtype, dropout=dropout, layer_norm_eps=layer_norm_eps)
@@ -85,8 +87,8 @@ class BaseAutoEncoder(nn.Module, ABC):
                 device=device, dtype=dtype, layer_norm_eps=layer_norm_eps)
             encoder_model = create_encoder(encoder_layer, num_transformer_layer)
             decoder_model = create_decoder(decoder_layer, num_transformer_layer)
-            linear_decoder = create_linear_encoder(dim)
-            linear_encoder = create_linear_decoder(dim)
+            linear_decoder = create_linear_encoder(dim, window_size)
+            linear_encoder = create_linear_decoder(dim, window_size)
             exec(f"""self.transformer_encoder_{i} = encoder_model
                  self.transformer_decoder_{i} = decoder_model
                  self.linear_encoder_{i} = linear_encoder
