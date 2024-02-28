@@ -55,6 +55,7 @@ class BaseAutoEncoder(nn.Module, ABC):
         def create_linear_encoder(dim: int, window_size: int):
             linear_encoder = nn.Sequential(
                 nn.Flatten(1, -1),
+                nn.Unflatten(-1, (dim * window_size, 1)),
                 nn.BatchNorm1d(num_features=dim * window_size, device=device, dtype=dtype),
                 nn.Linear(dim * window_size, dim * window_size // 4, device=device, dtype=dtype),
                 nn.Linear(dim * window_size // 4, dim * window_size // 4 ** 2, device=device, dtype=dtype),
@@ -110,7 +111,7 @@ class BaseAutoEncoder(nn.Module, ABC):
             memories.append(x_)
             embedded = linear_encoder(x_)
             embeddings.append(embedded)
-        _embedding = torch.concat(embeddings, dim=0)
+        _embedding = torch.stack(embeddings, dim=0)
         embedding = self.linear_encoder(_embedding)
         embedding = self.tanh(embedding)
         return (embedding, memories)
