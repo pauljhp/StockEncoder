@@ -24,11 +24,11 @@ FIGI_LIST = SQLDatabase.to_pandas(
 PERIOD_LIST = SQLDatabase.to_pandas(
     """SELECT DISTINCT period, DATEPART(year, period) as year
     FROM price_multiples_stock_encoder
-    WHERE DATEPART(year, period) > (
-            SELECT DISTINCT min(year) FROM fundamental_data_stock_encoder
-        ) + 1 AND
+    WHERE DATEPART(year, period) > ((
+		SELECT  min(year) FROM fundamental_data_stock_encoder
+		) + 2) AND
         DATEPART(year, period) <= (
-            SELECT DISTINCT max(year) FROM fundamental_data_stock_encoder
+            SELECT max(year) FROM fundamental_data_stock_encoder
         )
     ORDER BY period ASC;
     """
@@ -43,7 +43,9 @@ class FundamentalDataset(Dataset):
     # data = data.ffill(axis="columns") # forward fill missing data from the previous year
     figi_list = FIGI_LIST
     period_list = PERIOD_LIST
-    year_list = period_list.year.unique()
+    year_list = SQLDatabase.to_pandas(
+        "SELECT DISTINCT year FROM fundamental_data_stock_encoder ORDER BY year ASC"
+        )
     stats_dict = {'BottomValue': {'operating_roic': 0.2335, 
                 'normalized_roe': -40.5183, 
                 'return_on_asset': -2.4256, 
@@ -305,8 +307,8 @@ class FundamentalDataset(Dataset):
         super().__init__()
         # self.figi_list = self.data.index.get_level_values("figi").unique()
         # self.year_list = self.data.index.get_level_values("year").unique()
-        self.min_year = self.year_list.min()
-        self.max_year = self.year_list.max()
+        self.min_year = self.year_list.year.min()
+        self.max_year = self.year_list.year.max()
         self.window_size = window_size
         self.dtype = dtype
         self.padding_val = padding_val
