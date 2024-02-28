@@ -89,10 +89,7 @@ class BaseAutoEncoder(nn.Module, ABC):
             decoder_model = create_decoder(decoder_layer, num_transformer_layer)
             linear_decoder = create_linear_decoder(dim, window_size)
             linear_encoder = create_linear_encoder(dim, window_size)
-            exec(f"""self.transformer_encoder_{i} = encoder_model
-                 self.transformer_decoder_{i} = decoder_model
-                 self.linear_encoder_{i} = linear_encoder
-                 self.linear_decoder_{i} = linear_decoder
+            exec(f"""self.transformer_encoder_{i} = encoder_model\nself.transformer_decoder_{i} = decoder_model\nself.linear_encoder_{i} = linear_encoder\nself.linear_decoder_{i} = linear_decoder
                  """)
             self.transformer_encoders.append(encoder_model)
             self.transformer_decoders.append(decoder_model)
