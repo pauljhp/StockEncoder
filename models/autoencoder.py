@@ -74,8 +74,8 @@ class BaseAutoEncoder(nn.Module, ABC):
             )
             return linear_decoder
         self.tanh = nn.Tanh()
-        self.linear_encoder = nn.Linear(self.num_inputs, 1)
-        self.linear_decoder = nn.Linear(1, self.num_inputs)
+        self.linear_encoder = nn.Linear(self.num_inputs, encoding_dim)
+        self.linear_decoder = nn.Linear(encoding_dim, self.num_inputs)
         for i, (dim, nhead, num_transformer_layer, window_size) in enumerate(
             zip(
                 dims, nheads, num_transformer_layers, window_sizes)
