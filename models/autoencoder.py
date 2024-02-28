@@ -26,12 +26,19 @@ class BaseAutoEncoder(nn.Module, ABC):
             dropout: float=.1,
             layer_norm_eps: float=1e-4,
             dtype: torch.dtype=torch.float32):
-        """
-        :param window_sizes: number of periods in the inputs
-        :param encoding_dim: number of dimensions in the encoded vector
-            Different inputs will be encoded into the same-dimensional vector
-            and concatenated
-        :param num_transformer_layers: expressed a Sequence
+        """        Initializes the Transformer model with specified parameters.
+
+        Args:
+            window_sizes (Sequence[int]): Number of periods in the inputs.
+            encoding_dim (int): Number of dimensions in the encoded vector. Different inputs will be encoded into the same-dimensional vector and concatenated.
+            num_transformer_layers (Sequence[int]): A sequence expressing the number of transformer layers.
+            dims (Sequence[int]): A sequence of dimensions.
+            activation_func (Callable): Activation function to be used.
+            nheads (Sequence[int]): A sequence of the number of heads in the multiheadattention models.
+            device (torch.device): The device on which the model will be run.
+            dropout (float?): Dropout rate. Defaults to 0.1.
+            layer_norm_eps (float?): Epsilon value for layer normalization. Defaults to 1e-4.
+            dtype (torch.dtype?): Data type of the model. Defaults to torch.float32.
         """
         super().__init__()
         self.window_sizes = window_sizes
