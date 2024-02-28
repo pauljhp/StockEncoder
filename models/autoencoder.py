@@ -35,9 +35,9 @@ class BaseAutoEncoder(nn.Module, ABC):
         """
         super().__init__()
         self.window_sizes = window_sizes
-        self.dims = Tuple(dims)
-        self.num_transformer_layers = Tuple(num_transformer_layers)
-        self.nheads = Tuple(nheads)
+        self.dims = tuple(dims)
+        self.num_transformer_layers = tuple(num_transformer_layers)
+        self.nheads = tuple(nheads)
         self.linear_encoder_layers, self.linear_decoder_layers = [], []
         self.transformer_encoders, self.transformer_decoders = [], []
         self.num_inputs = len(num_transformer_layers)
