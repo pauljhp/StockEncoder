@@ -304,6 +304,15 @@ class FundamentalDataset(Dataset):
             dtype: torch.dtype=DEFAULTS.dtype,
             padding_val: torch.tensor=DEFAULTS.padding_val,
             freq: DEFAULTS.FREQ="Y"):
+        """        Initialize the object with specified parameters.
+
+        Args:
+            window_size (int?): The size of the window in years. Defaults to DEFAULTS.window_size_years.
+            dtype (torch.dtype?): The data type for torch tensors. Defaults to DEFAULTS.dtype.
+            padding_val (torch.tensor?): The padding value for torch tensors. Defaults to DEFAULTS.padding_val.
+            freq (DEFAULTS.FREQ?): The frequency of the data. Defaults to "Y".
+        """
+
         super().__init__()
         # self.figi_list = self.data.index.get_level_values("figi").unique()
         # self.year_list = self.data.index.get_level_values("year").unique()
