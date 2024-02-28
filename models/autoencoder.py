@@ -26,12 +26,19 @@ class BaseAutoEncoder(nn.Module, ABC):
             dropout: float=.1,
             layer_norm_eps: float=1e-4,
             dtype: torch.dtype=torch.float32):
-        """
-        :param window_sizes: number of periods in the inputs
-        :param encoding_dim: number of dimensions in the encoded vector
-            Different inputs will be encoded into the same-dimensional vector
-            and concatenated
-        :param num_transformer_layers: expressed a Sequence
+        """        Initialize the model with the given parameters.
+
+        Args:
+            window_sizes (Sequence[int]): Number of periods in the inputs.
+            encoding_dim (int): Number of dimensions in the encoded vector. Different inputs will be encoded into the same-dimensional vector and concatenated.
+            num_transformer_layers (Sequence[int]): A sequence expressing the number of transformer layers.
+            dims (Sequence[int]): A sequence of integers representing dimensions.
+            activation_func (Callable): The activation function to be used.
+            nheads (Sequence[int]): A sequence of integers representing the number of heads.
+            device (torch.device): The device to be used for computation.
+            dropout (float?): The dropout rate. Defaults to 0.1.
+            layer_norm_eps (float?): The epsilon value for layer normalization. Defaults to 1e-4.
+            dtype (torch.dtype?): The data type for computation. Defaults to torch.float32.
         """
         super().__init__()
         self.window_sizes = window_sizes
@@ -120,6 +127,19 @@ class BaseAutoEncoder(nn.Module, ABC):
             self, 
             embedding: torch.tensor, 
             memories: Sequence[torch.tensor]) -> Sequence[torch.tensor]:
+        """        Decode the input embedding using linear decoder and transformer decoders.
+
+        This method decodes the input embedding using a linear decoder and transformer decoders.
+        It iterates through the input memories and reconstructs the output for each memory.
+
+        Args:
+            embedding (torch.tensor): The input embedding to be decoded.
+            memories (Sequence[torch.tensor]): A sequence of memory tensors.
+
+        Returns:
+            Sequence[torch.tensor]: A sequence of reconstructed output tensors.
+        """
+
         _embeddings = self.linear_decoder(embedding)
         reconstructed_xs = []
         for i in range(self.num_inputs):
