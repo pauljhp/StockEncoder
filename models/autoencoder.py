@@ -26,12 +26,19 @@ class BaseAutoEncoder(nn.Module, ABC):
             dropout: float=.1,
             layer_norm_eps: float=1e-4,
             dtype: torch.dtype=torch.float32):
-        """
-        :param window_sizes: number of periods in the inputs
-        :param encoding_dim: number of dimensions in the encoded vector
-            Different inputs will be encoded into the same-dimensional vector
-            and concatenated
-        :param num_transformer_layers: expressed a Sequence
+        """        Initialize the Transformer model with specified parameters.
+
+        Args:
+            window_sizes (Sequence[int]): Number of periods in the inputs.
+            encoding_dim (int): Number of dimensions in the encoded vector. Different inputs will be encoded into the same-dimensional vector and concatenated.
+            num_transformer_layers (Sequence[int]): Number of transformer layers expressed as a Sequence.
+            dims (Sequence[int]): Sequence of dimensions.
+            activation_func (Callable): Activation function to be used.
+            nheads (Sequence[int]): Number of heads expressed as a Sequence.
+            device (torch.device): Device on which the model will be run.
+            dropout (float?): Dropout rate. Defaults to 0.1.
+            layer_norm_eps (float?): Epsilon value for layer normalization. Defaults to 1e-4.
+            dtype (torch.dtype?): Data type. Defaults to torch.float32.
         """
         super().__init__()
         self.window_sizes = window_sizes
@@ -48,11 +55,33 @@ class BaseAutoEncoder(nn.Module, ABC):
                     )
             return transformer_encoder
         def create_decoder(decoder_layer: nn.TransformerDecoderLayer, num_layers: int):
+            """            Create a transformer decoder with the specified decoder layer and number of layers.
+
+            Args:
+                decoder_layer (nn.TransformerDecoderLayer): An instance of nn.TransformerDecoderLayer.
+                num_layers (int): The number of decoder layers.
+
+            Returns:
+                nn.TransformerDecoder: A transformer decoder with the specified configuration.
+            """
+
             transformer_decoder = nn.TransformerDecoder(
                 decoder_layer=decoder_layer, 
                 num_layers=num_layers)
             return transformer_decoder
         def create_linear_encoder(dim: int, window_size: int):
+            """            Create a linear encoder for a given dimension and window size.
+
+            This function creates a linear encoder using a series of linear layers and batch normalization.
+
+            Args:
+                dim (int): The dimension of the input data.
+                window_size (int): The size of the input window.
+
+            Returns:
+                nn.Sequential: The linear encoder model.
+            """
+
             linear_encoder = nn.Sequential(
                 nn.Flatten(1, -1),
                 nn.Unflatten(-1, (dim * window_size, 1)),
@@ -103,7 +132,17 @@ class BaseAutoEncoder(nn.Module, ABC):
             inputs: Sequence[Tuple[torch.tensor, Optional[torch.tensor]]],
             padding_masks: Sequence[torch.tensor]
             ) -> Tuple[torch.tensor, Tuple[torch.tensor]]:
-        """encode the inputs i"""
+        """        Encode the input sequences using transformer and linear encoders.
+
+        This method takes a sequence of input tensors and their corresponding padding masks and encodes them using transformer and linear encoders. It then returns the encoded embedding and memories.
+
+        Args:
+            inputs (Sequence[Tuple[torch.tensor, Optional[torch.tensor]]]): A sequence of tuples containing input tensors and their optional padding masks.
+            padding_masks (Sequence[torch.tensor]): A sequence of padding masks for the input tensors.
+
+        Returns:
+            Tuple[torch.tensor, Tuple[torch.tensor]]: A tuple containing the encoded embedding and a tuple of memories from the encoding process.
+        """
         embeddings, memories = [], []
         for input, mask, transformer_encoder, linear_encoder in zip(
             inputs, padding_masks, self.transformer_encoders, self.linear_encoder_layers):
