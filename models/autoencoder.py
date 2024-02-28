@@ -198,21 +198,51 @@ class MacroAutoEncoder(nn.Module):
 
 class FundamentalsAutoEncoder(BaseAutoEncoder):
     def __init__(self):
+        """        Initialize the object.
+
+        Raises:
+            NotImplementedError: This method is not implemented and should be overridden in a subclass.
+        """
+
         raise NotImplementedError
 
 
 class MacroAutoEncoder(BaseAutoEncoder):
     def __init__(self):
+        """        Initialize the object.
+
+        Raises:
+            NotImplementedError: This method is not implemented and should be overridden in subclasses.
+        """
+
         raise NotImplementedError
 
 class PriceAutoEncoder(BaseAutoEncoder):
     def __init__(self):
+        """        Initialize the object.
+
+        Raises:
+            NotImplementedError: This method is not implemented and should be overridden in a subclass.
+        """
+
         raise NotImplementedError
     
 class EstimatesAutoEncoder(BaseAutoEncoder):
     def __init__(self):
+        """        Initialize the object.
+
+        Raises:
+            NotImplementedError: This method is not implemented and should be overridden in the derived classes.
+        """
+
         raise NotImplementedError
 
 class PricePredictionModel(BaseAutoEncoder):
     def __init__(self):
+        """        Initialize the object.
+
+        Raises:
+            NotImplementedError: This method is not implemented and should be overridden in a subclass.
+        """
+
         raise NotImplementedError
