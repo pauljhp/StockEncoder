@@ -26,12 +26,19 @@ class BaseAutoEncoder(nn.Module, ABC):
             dropout: float=.1,
             layer_norm_eps: float=1e-4,
             dtype: torch.dtype=torch.float32):
-        """
-        :param window_sizes: number of periods in the inputs
-        :param encoding_dim: number of dimensions in the encoded vector
-            Different inputs will be encoded into the same-dimensional vector
-            and concatenated
-        :param num_transformer_layers: expressed a Sequence
+        """        Initializes the Transformer model with the given parameters.
+
+        Args:
+            window_sizes (Sequence[int]): Number of periods in the inputs.
+            encoding_dim (int): Number of dimensions in the encoded vector. Different inputs will be encoded into the same-dimensional vector and concatenated.
+            num_transformer_layers (Sequence[int]): A sequence expressing the number of transformer layers.
+            dims (Sequence[int]): A sequence of integers representing the dimensions.
+            activation_func (Callable): The activation function to be used.
+            nheads (Sequence[int]): A sequence of integers representing the number of heads.
+            device (torch.device): The device on which the model will be run.
+            dropout (float?): The dropout rate. Defaults to 0.1.
+            layer_norm_eps (float?): The epsilon value for layer normalization. Defaults to 1e-4.
+            dtype (torch.dtype?): The data type. Defaults to torch.float32.
         """
         super().__init__()
         self.window_sizes = window_sizes
@@ -48,11 +55,33 @@ class BaseAutoEncoder(nn.Module, ABC):
                     )
             return transformer_encoder
         def create_decoder(decoder_layer: nn.TransformerDecoderLayer, num_layers: int):
+            """            Create a transformer decoder with the specified decoder layer and number of layers.
+
+            Args:
+                decoder_layer (nn.TransformerDecoderLayer): The decoder layer to be used in the transformer decoder.
+                num_layers (int): The number of layers in the transformer decoder.
+
+            Returns:
+                nn.TransformerDecoder: The created transformer decoder.
+            """
+
             transformer_decoder = nn.TransformerDecoder(
                 decoder_layer=decoder_layer, 
                 num_layers=num_layers)
             return transformer_decoder
         def create_linear_encoder(dim: int, window_size: int):
+            """            Create a linear encoder for a given dimension and window size.
+
+            This function creates a linear encoder using a sequence of neural network layers including flattening, batch normalization, and linear layers.
+
+            Args:
+                dim (int): The dimension of the input data.
+                window_size (int): The size of the input window.
+
+            Returns:
+                nn.Sequential: The linear encoder neural network.
+            """
+
             linear_encoder = nn.Sequential(
                 nn.Flatten(1, -1),
                 # nn.Unflatten(-1, (dim * window_size, 1)),
@@ -103,7 +132,17 @@ class BaseAutoEncoder(nn.Module, ABC):
             inputs: Sequence[Tuple[torch.tensor, Optional[torch.tensor]]],
             padding_masks: Sequence[torch.tensor]
             ) -> Tuple[torch.tensor, Tuple[torch.tensor]]:
-        """encode the inputs i"""
+        """        Encode the input sequences using transformer and linear encoders.
+
+        This method takes a sequence of input tensors and their corresponding padding masks and encodes them using transformer and linear encoders. It then returns the encoded embeddings along with the intermediate memories.
+
+        Args:
+            inputs (Sequence[Tuple[torch.tensor, Optional[torch.tensor]]]): A sequence of tuples containing input tensors and their optional padding masks.
+            padding_masks (Sequence[torch.tensor]): A sequence of padding masks for the input tensors.
+
+        Returns:
+            Tuple[torch.tensor, Tuple[torch.tensor]]: A tuple containing the encoded embeddings and a tuple of intermediate memories.
+        """
         embeddings, memories = [], []
         for input, mask, transformer_encoder, linear_encoder in zip(
             inputs, padding_masks, self.transformer_encoders, self.linear_encoder_layers):
@@ -120,6 +159,18 @@ class BaseAutoEncoder(nn.Module, ABC):
             self, 
             embedding: torch.tensor, 
             memories: Sequence[torch.tensor]) -> Sequence[torch.tensor]:
+        """        Decode the input embedding using transformer decoders.
+
+        This method decodes the input embedding using transformer decoders and returns the reconstructed outputs.
+
+        Args:
+            embedding (torch.tensor): The input embedding to be decoded.
+            memories (Sequence[torch.tensor]): A sequence of memory tensors used by the transformer decoders.
+
+        Returns:
+            Sequence[torch.tensor]: A sequence of reconstructed output tensors.
+        """
+
         _embeddings = self.linear_decoder(embedding)
         reconstructed_xs = []
         for i in range(self.num_inputs):
