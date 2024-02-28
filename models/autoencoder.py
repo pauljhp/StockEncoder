@@ -69,7 +69,7 @@ class BaseAutoEncoder(nn.Module, ABC):
                 nn.Linear(dim * window_size // 4 ** 2, dim * window_size // 4, device=device, dtype=dtype),
                 nn.Linear(dim * window_size // 4, dim * window_size, device=device, dtype=dtype),
                 nn.BatchNorm1d(num_features=dim * window_size, device=device, dtype=dtype),
-                nn.Unflatten(-1, (self.window_size, self.dim)),
+                nn.Unflatten(-1, (window_size, dim)),
             )
             return linear_decoder
         self.tanh = nn.Tanh()
@@ -87,8 +87,8 @@ class BaseAutoEncoder(nn.Module, ABC):
                 device=device, dtype=dtype, layer_norm_eps=layer_norm_eps)
             encoder_model = create_encoder(encoder_layer, num_transformer_layer)
             decoder_model = create_decoder(decoder_layer, num_transformer_layer)
-            linear_decoder = create_linear_encoder(dim, window_size)
-            linear_encoder = create_linear_decoder(dim, window_size)
+            linear_decoder = create_linear_decoder(dim, window_size)
+            linear_encoder = create_linear_encoder(dim, window_size)
             exec(f"""self.transformer_encoder_{i} = encoder_model
                  self.transformer_decoder_{i} = decoder_model
                  self.linear_encoder_{i} = linear_encoder
