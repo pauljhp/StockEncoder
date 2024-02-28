@@ -313,13 +313,16 @@ class FundamentalDataset(Dataset):
         self.dtype = dtype
         self.padding_val = padding_val
         # year_range = range(self.min_year + 2, self.max_year)
-        periods = pd.Index(self.period_list.period)\
-                .astype("datetime64[ns]")\
-                    .to_period(freq=freq)\
-                        .unique()\
-                            .sort_values()\
-                                .astype("datetime64[ns]")\
-                                    .values
+        if freq == "W": # force index to be the same as price_data
+            periods = self.period_list.period
+        else:
+            periods = pd.Index(self.period_list.period)\
+                    .astype("datetime64[ns]")\
+                        .to_period(freq=freq)\
+                            .unique()\
+                                .sort_values()\
+                                    .astype("datetime64[ns]")\
+                                        .values
         self.index = list(
             itertools.product(
                 tuple(range(len(self.figi_list))), 
