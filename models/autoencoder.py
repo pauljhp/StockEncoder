@@ -26,12 +26,19 @@ class BaseAutoEncoder(nn.Module, ABC):
             dropout: float=.1,
             layer_norm_eps: float=1e-4,
             dtype: torch.dtype=torch.float32):
-        """
-        :param window_sizes: number of periods in the inputs
-        :param encoding_dim: number of dimensions in the encoded vector
-            Different inputs will be encoded into the same-dimensional vector
-            and concatenated
-        :param num_transformer_layers: expressed a Sequence
+        """        Initializes the model with the given parameters.
+
+        Args:
+            window_sizes (Sequence[int]): Number of periods in the inputs.
+            encoding_dim (int): Number of dimensions in the encoded vector. Different inputs will be encoded into the same-dimensional vector and concatenated.
+            num_transformer_layers (Sequence[int]): Expressed as a Sequence.
+            dims (Sequence[int]): Dimensions of the model.
+            activation_func (Callable): Activation function to be used.
+            nheads (Sequence[int]): Number of heads in the model.
+            device (torch.device): Device on which the model will be run.
+            dropout (float?): Dropout rate. Defaults to 0.1.
+            layer_norm_eps (float?): Epsilon value for layer normalization. Defaults to 1e-4.
+            dtype (torch.dtype?): Data type for the model. Defaults to torch.float32.
         """
         super().__init__()
         self.window_sizes = window_sizes
@@ -48,11 +55,33 @@ class BaseAutoEncoder(nn.Module, ABC):
                     )
             return transformer_encoder
         def create_decoder(decoder_layer: nn.TransformerDecoderLayer, num_layers: int):
+            """            Create a transformer decoder with the specified decoder layer and number of layers.
+
+            Args:
+                decoder_layer (nn.TransformerDecoderLayer): An instance of the decoder layer for the transformer decoder.
+                num_layers (int): The number of layers in the transformer decoder.
+
+            Returns:
+                nn.TransformerDecoder: An instance of the transformer decoder.
+            """
+
             transformer_decoder = nn.TransformerDecoder(
                 decoder_layer=decoder_layer, 
                 num_layers=num_layers)
             return transformer_decoder
         def create_linear_encoder(dim: int, window_size: int):
+            """            Create a linear encoder for a given dimension and window size.
+
+            This function creates a linear encoder using a sequence of neural network layers including flattening, batch normalization, and multiple linear layers.
+
+            Args:
+                dim (int): The dimension of the input data.
+                window_size (int): The size of the window for encoding.
+
+            Returns:
+                nn.Sequential: The linear encoder model.
+            """
+
             linear_encoder = nn.Sequential(
                 nn.Flatten(1, -1),
                 nn.BatchNorm1d(num_features=dim * window_size, device=device, dtype=dtype),
@@ -63,6 +92,18 @@ class BaseAutoEncoder(nn.Module, ABC):
             )
             return linear_encoder
         def create_linear_decoder(dim: int, window_size: int):
+            """            Create a linear decoder for a given dimension and window size.
+
+            This function creates a linear decoder using a sequence of linear layers and batch normalization.
+
+            Args:
+                dim (int): The dimension of the input data.
+                window_size (int): The size of the input window.
+
+            Returns:
+                nn.Sequential: The linear decoder model.
+            """
+
             linear_decoder = nn.Sequential(
                 nn.Linear(encoding_dim, dim * window_size // 4 ** 3, device=device, dtype=dtype),
                 nn.Linear(dim * window_size // 4 ** 3, dim * window_size // 4 ** 2, device=device, dtype=dtype),
