@@ -26,12 +26,19 @@ class BaseAutoEncoder(nn.Module, ABC):
             dropout: float=.1,
             layer_norm_eps: float=1e-4,
             dtype: torch.dtype=torch.float32):
-        """
-        :param window_sizes: number of periods in the inputs
-        :param encoding_dim: number of dimensions in the encoded vector
-            Different inputs will be encoded into the same-dimensional vector
-            and concatenated
-        :param num_transformer_layers: expressed a Sequence
+        """        Initializes the transformer model with the given parameters.
+
+        Args:
+            window_sizes (Sequence[int]): Number of periods in the inputs.
+            encoding_dim (int): Number of dimensions in the encoded vector. Different inputs will be encoded into the same-dimensional vector and concatenated.
+            num_transformer_layers (Sequence[int]): A sequence expressing the number of transformer layers.
+            dims (Sequence[int]): A sequence of dimensions.
+            activation_func (Callable): Activation function to be used.
+            nheads (Sequence[int]): A sequence of the number of heads.
+            device (torch.device): The device on which the model will be run.
+            dropout (float?): Dropout rate. Defaults to 0.1.
+            layer_norm_eps (float?): Epsilon value for layer normalization. Defaults to 1e-4.
+            dtype (torch.dtype?): Data type. Defaults to torch.float32.
         """
         super().__init__()
         self.window_sizes = window_sizes
@@ -63,6 +70,18 @@ class BaseAutoEncoder(nn.Module, ABC):
             )
             return linear_encoder
         def create_linear_decoder(dim: int, window_size: int):
+            """            Create a linear decoder for a given dimension and window size.
+
+            This function creates a linear decoder using a series of linear layers and batch normalization.
+
+            Args:
+                dim (int): The dimension of the input data.
+                window_size (int): The size of the input window.
+
+            Returns:
+                nn.Sequential: The linear decoder model.
+            """
+
             linear_decoder = nn.Sequential(
                 nn.Linear(encoding_dim, dim * window_size // 4 ** 3, device=device, dtype=dtype),
                 nn.Linear(dim * window_size // 4 ** 3, dim * window_size // 4 ** 2, device=device, dtype=dtype),
