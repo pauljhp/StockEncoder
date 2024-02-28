@@ -196,13 +196,23 @@ class MacroAutoEncoder(nn.Module):
         return self.forward(x, padding_mask)
     
 
-class FundamentalsAutoEncoder:
-    raise NotImplementedError
+class FundamentalsAutoEncoder(BaseAutoEncoder):
+    def __init__(self):
+        raise NotImplementedError
 
 
-class MacroAutoEncoder:
-    raise NotImplementedError
+class MacroAutoEncoder(BaseAutoEncoder):
+    def __init__(self):
+        raise NotImplementedError
 
+class PriceAutoEncoder(BaseAutoEncoder):
+    def __init__(self):
+        raise NotImplementedError
+    
+class EstimatesAutoEncoder(BaseAutoEncoder):
+    def __init__(self):
+        raise NotImplementedError
 
-class PricePredictionModel:
-    raise NotImplementedError
+class PricePredictionModel(BaseAutoEncoder):
+    def __init__(self):
+        raise NotImplementedError
