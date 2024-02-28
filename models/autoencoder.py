@@ -55,7 +55,7 @@ class BaseAutoEncoder(nn.Module, ABC):
         def create_linear_encoder(dim: int, window_size: int):
             linear_encoder = nn.Sequential(
                 nn.Flatten(1, -1),
-                nn.Unflatten(-1, (dim * window_size, 1)),
+                # nn.Unflatten(-1, (dim * window_size, 1)),
                 nn.BatchNorm1d(num_features=dim * window_size, device=device, dtype=dtype),
                 nn.Linear(dim * window_size, dim * window_size // 4, device=device, dtype=dtype),
                 nn.Linear(dim * window_size // 4, dim * window_size // 4 ** 2, device=device, dtype=dtype),
