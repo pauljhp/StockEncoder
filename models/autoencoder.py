@@ -118,7 +118,7 @@ class BaseAutoEncoder(nn.Module, ABC):
             x_ = transformer_encoder(input, src_key_padding_mask=mask)
             memories.append(x_)
             embedded = linear_encoder(x_)
-            embeddings.append(embedded)
+            embeddings.append(self.tanh(embedded))
         _embedding = torch.stack(embeddings, dim=-1)
         embedding = self.linear_encoder(_embedding)
         embedding = self.tanh(embedding)
@@ -129,10 +129,11 @@ class BaseAutoEncoder(nn.Module, ABC):
             embedding: torch.tensor, 
             memories: Sequence[torch.tensor]) -> Sequence[torch.tensor]:
         _embeddings = self.linear_decoder(embedding)
+        _embeddings = self.tanh(_embeddings)
         reconstructed_xs = []
         for i in range(self.num_inputs):
             _output = self.linear_decoder_layers[i](_embeddings[:, :, i])
-            output = self.transformer_decoders[i](_output, memory=memories[i])
+            output = self.transformer_decoders[i](self.tanh(_output), memory=memories[i])
             reconstructed_xs.append(output)
         return reconstructed_xs
 
