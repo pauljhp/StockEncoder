@@ -74,8 +74,14 @@ class BaseAutoEncoder(nn.Module, ABC):
             )
             return linear_decoder
         self.tanh = nn.Tanh()
-        self.linear_encoder = nn.Linear(encoding_dim, encoding_dim)
-        self.linear_decoder = nn.Linear(encoding_dim, encoding_dim)
+        self.linear_encoder = nn.Sequential(
+                nn.Flatten(1, -1),
+                nn.Linear(encoding_dim, encoding_dim)
+            )
+        self.linear_decoder = nn.Sequential(
+                nn.Unflatten(-1, (encoding_dim, self.num_inputs)),
+                nn.Linear(encoding_dim, encoding_dim)
+            )
         for i, (dim, nhead, num_transformer_layer, window_size) in enumerate(
             zip(
                 dims, nheads, num_transformer_layers, window_sizes)
@@ -113,7 +119,7 @@ class BaseAutoEncoder(nn.Module, ABC):
             memories.append(x_)
             embedded = linear_encoder(x_)
             embeddings.append(embedded)
-        _embedding = torch.concat(embeddings, dim=-1)
+        _embedding = torch.stack(embeddings, dim=-1)
         embedding = self.linear_encoder(_embedding)
         embedding = self.tanh(embedding)
         return (embedding, memories)
