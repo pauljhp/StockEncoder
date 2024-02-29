@@ -76,11 +76,11 @@ class BaseAutoEncoder(nn.Module, ABC):
         self.tanh = nn.Tanh()
         self.linear_encoder = nn.Sequential(
                 nn.Flatten(1, -1),
-                nn.Linear(encoding_dim, encoding_dim)
+                nn.Linear(encoding_dim * self.num_inputs, encoding_dim)
             )
         self.linear_decoder = nn.Sequential(
+                nn.Linear(encoding_dim, encoding_dim * self.num_inputs),
                 nn.Unflatten(-1, (encoding_dim, self.num_inputs)),
-                nn.Linear(encoding_dim, encoding_dim)
             )
         for i, (dim, nhead, num_transformer_layer, window_size) in enumerate(
             zip(
