@@ -131,7 +131,7 @@ class BaseAutoEncoder(nn.Module, ABC):
         _embeddings = self.linear_decoder(embedding)
         reconstructed_xs = []
         for i in range(self.num_inputs):
-            _output = self.linear_decoder_layers[i](_embeddings[:, i])
+            _output = self.linear_decoder_layers[i](_embeddings[:, :, i])
             output = self.transformer_decoders[i](_output, memory=memories[i])
             reconstructed_xs.append(output)
         return reconstructed_xs
