@@ -74,8 +74,8 @@ class BaseAutoEncoder(nn.Module, ABC):
             )
             return linear_decoder
         self.tanh = nn.Tanh()
-        self.linear_encoder = nn.Linear(self.num_inputs, encoding_dim)
-        self.linear_decoder = nn.Linear(encoding_dim, self.num_inputs)
+        self.linear_encoder = nn.Linear(encoding_dim, encoding_dim)
+        self.linear_decoder = nn.Linear(encoding_dim, encoding_dim)
         for i, (dim, nhead, num_transformer_layer, window_size) in enumerate(
             zip(
                 dims, nheads, num_transformer_layers, window_sizes)
@@ -103,7 +103,9 @@ class BaseAutoEncoder(nn.Module, ABC):
             inputs: Sequence[Tuple[torch.tensor, Optional[torch.tensor]]],
             padding_masks: Sequence[torch.tensor]
             ) -> Tuple[torch.tensor, Tuple[torch.tensor]]:
-        """encode the inputs i"""
+        """encode a list of inputs of different lengths and dimensionalities
+        into a single embedding vector
+        """
         embeddings, memories = [], []
         for input, mask, transformer_encoder, linear_encoder in zip(
             inputs, padding_masks, self.transformer_encoders, self.linear_encoder_layers):
@@ -111,7 +113,7 @@ class BaseAutoEncoder(nn.Module, ABC):
             memories.append(x_)
             embedded = linear_encoder(x_)
             embeddings.append(embedded)
-        _embedding = torch.stack(embeddings, dim=0)
+        _embedding = torch.concat(embeddings, dim=-1)
         embedding = self.linear_encoder(_embedding)
         embedding = self.tanh(embedding)
         return (embedding, memories)
@@ -123,15 +125,15 @@ class BaseAutoEncoder(nn.Module, ABC):
         _embeddings = self.linear_decoder(embedding)
         reconstructed_xs = []
         for i in range(self.num_inputs):
-            _output = self.linear_decoder_layers[i](_embeddings[i])
+            _output = self.linear_decoder_layers[i](_embeddings[:, i])
             output = self.transformer_decoders[i](_output, memory=memories[i])
             reconstructed_xs.append(output)
         return reconstructed_xs
 
-    def forward(self, x, padding_mask: torch.tensor) -> torch.tensor:
-        x_, z = self.encode(x, padding_mask=padding_mask)
-        y_ = self.decode(z, x_)
-        return y_
+    def forward(self, x, padding_masks: torch.tensor) -> torch.tensor:
+        embedding, memories = self.encode(x, padding_masks=padding_masks)
+        x_ = self.decode(embedding, memories)
+        return x_
     
     def __call__(self, x, padding_mask) -> torch.tensor:
         return self.forward(x, padding_mask)

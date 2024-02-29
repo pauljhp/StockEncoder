@@ -1,6 +1,9 @@
 # secret files
 .secrets/
 
+# log files and directory
+traininglog/
+
 # large datafiles
 *.csv
 data/datafiles/
