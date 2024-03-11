@@ -1,18 +1,26 @@
 name: stockencoder_env
 channels:
   - defaults
+  - conda-forge
+  - pytorch
+  - anaconda
+
 dependencies:
+  - python=3.10
   - numpy
   - scipy
-  - python=3.10
   - matplotlib
   - pytorch
   - pandas
-  - tensorboardx
   - pip:
     - pydantic
     - jupyter
     - jupyterlab
     - ipykernel
     - ipywidgets
+    - tensorboardx
+    - toml
+    - json
+    - sqlalchemy
+    - pyodbc
 prefix: C:\users\p.peng\anaconda3\envs\stockencoder_env
