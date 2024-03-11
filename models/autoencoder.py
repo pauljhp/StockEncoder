@@ -26,12 +26,19 @@ class BaseAutoEncoder(nn.Module, ABC):
             dropout: float=.1,
             layer_norm_eps: float=1e-4,
             dtype: torch.dtype=torch.float32):
-        """
-        :param window_sizes: number of periods in the inputs
-        :param encoding_dim: number of dimensions in the encoded vector
-            Different inputs will be encoded into the same-dimensional vector
-            and concatenated
-        :param num_transformer_layers: expressed a Sequence
+        """        Initializes the transformer model with the given parameters.
+
+        Args:
+            window_sizes (Sequence[int]): Number of periods in the inputs.
+            encoding_dim (int): Number of dimensions in the encoded vector. Different inputs will be encoded into the same-dimensional vector and concatenated.
+            num_transformer_layers (Sequence[int]): A sequence expressing the number of transformer layers.
+            dims (Sequence[int]): A sequence of integers representing the dimensions.
+            activation_func (Callable): The activation function to be used.
+            nheads (Sequence[int]): A sequence of integers representing the number of heads.
+            device (torch.device): The device on which the model will be run.
+            dropout (float?): The dropout rate. Defaults to 0.1.
+            layer_norm_eps (float?): The epsilon value for layer normalization. Defaults to 1e-4.
+            dtype (torch.dtype?): The data type. Defaults to torch.float32.
         """
         super().__init__()
         self.window_sizes = window_sizes
@@ -53,6 +60,18 @@ class BaseAutoEncoder(nn.Module, ABC):
                 num_layers=num_layers)
             return transformer_decoder
         def create_linear_encoder(dim: int, window_size: int):
+            """            Create a linear encoder for a given dimension and window size.
+
+            This function creates a linear encoder using a sequence of neural network layers to encode the input data.
+
+            Args:
+                dim (int): The dimension of the input data.
+                window_size (int): The size of the input window.
+
+            Returns:
+                nn.Sequential: A linear encoder model.
+            """
+
             linear_encoder = nn.Sequential(
                 nn.Flatten(1, -1),
                 # nn.Unflatten(-1, (dim * window_size, 1)),
